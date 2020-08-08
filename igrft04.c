@@ -3,7 +3,12 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
+typedef struct memChunk{
+    char name[24];
+    void* ptr;
+}Chunk;
 // COMMON BLOCKS in geopack_08
 extern struct geopack1{
     double cb[34];
@@ -173,7 +178,7 @@ void mex_getCOMMON(char *varname, void *commonBlock, size_t blocksize){
     void *commonPersist;
     mxInt64 *commonInfo;
     char exist_cmd[100];
-    // check if matlab has COMMON var in global
+    // EDIT: put memory chunk in a file named mex.temp
     // commonID is a global struct, with fields=COMMON names => [address, size]
     sprintf(exist_cmd, "if(~exist('commonID','var'))global commonID;end;");
     mexEvalString(exist_cmd);
