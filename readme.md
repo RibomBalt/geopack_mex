@@ -58,7 +58,7 @@ C MEX API对应的mex函数则主要是一些和MATLAB本身通信的函数，�
 - 验证变量类型：mxIs*。见Validate Data
 - 删除一个变量并释放内存：`mxDestroyArray`
 - 分配/释放内存：`mxCalloc`/`mxFree`。注意要`#include <stdlib.h>`。一般来说即使不调用Free在mex调用完后也会自动释放内存。但特别注意和Struct, Cell相关有些变量是不能`mxFree`的，主函数的`plhs`/`prhs`也不可以。
-- 将数据存到变量中：mxSet*。注意，被存储的数据必须是被`mxCalloc`等mx函数创建出来的
+- 将数据存到变量中：mxSet*。注意，被存储的数据必须是被`mxCalloc`等mx函数创建出来的。如果不是，则需要`memcpy`一下
 - 控制台输出、报错等：`mexPrintf`,`mexErrMsgIdAndTxt`
 - 执行语句：`mexEvalString`,`mexCallMATLAB`
 - 交换变量：`mexGetVariable`,`mexPutVariable`
@@ -83,10 +83,6 @@ C中对于外部定义的函数、变量等需要加extern关键字。这一点�
 
 ### 2.3 关于全局变量和COMMON块
 
-> 这是我自认为我这个工程的一个创新点（叉腰.jpg）
-
-一般情况下，mex调用结束后，所有变量都会清理。因此源程序所谓的**全局变量**都不是全局的。而对于这种模块，不得不采用全局变量传输数据的情况下，会比较麻烦。MATLAB考虑到有这种需求，因此提供了`mexMakeMemoryPersistent`函数，mex函数执行后可以保留部分内存，直到模块被卸载（clear）为止。为了在模块卸载时释放这些内存，我们需要用`mexAtExit`函数。
-
 COMMON块是老Fortran（F77）使用全局变量的方式。由于COMMON没有对类型的定义，因此某种程度上COMMON也可以作为共用变量使用，在内存比较贵的时代还是很有意义的。
 
 当然这些都不重要。我们只需要知道COMMON块==一整块内存即可。在C里，我们可以用结构体构造出长度相等的内存。当然，由于这些COMMON是在Fortran中定义的，我们需要声明为extern。至于原来COMMON是什么类型没有关系，编译器只管自家的变量类型正确，外面的是什么类型它不care。比如下面这两组定义就是一回事
@@ -102,13 +98,7 @@ extern struct type2{
 
 在我们的code中，老代码使用了GEOPACK1和GEOPACK2两个COMMON，其大小分别是34个和315个double。为了回避C编译器的类型检查，我们可以用memcpy进行数据的拷贝工作。
 
-回到原来的问题，我们就需要声明extern COMMON，再为单独申请一段运行后可保留的内存作为mex执行后的COMMON保留地址。但是，在下次调用时，如何让程序知道这段保留地址呢？有这些方案：
-
-1. 在输出输入参数中加一个内存地址参数。这样调用过程会比较ugly，可读性比较差
-2. 将地址数据存到MATLAB工作区。
-3. 把地址存到临时文件里。大批量调用可能会拖慢运行速度。
-
-最终我把地址数据打包成结构体存到MATLAB全局变量里了。其他细节，包括第一次执行时如何处理，卸载模块时如何处理，请见igrft04.c中的`mex_getCOMMON`,`mex_putCOMMON`,`mex_clearCOMMON`。三个函数。
+之前对MATLAB调用mex的机制有所误解，走了好多弯路。事实上，mex一经调用便常驻MATLAB内存，直到被clear掉或MATLAB主程序退出。而C语言中，一个变量只能初始化一次。这就导致了，一个mex中定义的全局变量，在执行后可以保留，达到一种类似static的效果。当然，多个mex之间的全局变量不可以通信，这也告诉我们最好把一个模块所有函数写到一个mex文件里。除此以外，MATLAB也提供了`mexMakeMemoryPersistent`等方法来将主程序中动态定义的数据保持下来，不需要存储到MATLAB工作区或文件中也能在下一次调用中继续使用。当然对我们的问题，是用不到的。
 
 ### 2.4 关于调试
 

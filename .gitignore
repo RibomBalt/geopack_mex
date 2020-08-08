@@ -1,3 +1,4 @@
 *.obj
 !rebuild.bat
 *.bat
+*.temp

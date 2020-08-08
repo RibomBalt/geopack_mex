@@ -69,9 +69,6 @@ void mexT04(int nlhs, mxArray *plhs[],
     for(i=0;i<totnum;i++){
         T04_S(&iopt, parmod, ps, x+i, y+i, z+i, bx+i, by+i, bz+i);
     }
-    mxSetDoubles(oBX,bx);
-    mxSetDoubles(oBY,by);
-    mxSetDoubles(oBZ,bz);
     // return process
     switch(nlhs){
         case 2:
@@ -146,9 +143,6 @@ void mexIGRFGSW(int nlhs, mxArray *plhs[],
     for(i=0;i<totnum;i++){
         IGRF_GSW_08(x+i, y+i, z+i, bx+i, by+i, bz+i);
     }
-    mxSetDoubles(oBX,bx);
-    mxSetDoubles(oBY,by);
-    mxSetDoubles(oBZ,bz);
     //arrange output
     switch(nlhs){
         case 2:
@@ -168,88 +162,6 @@ void mexIGRFGSW(int nlhs, mxArray *plhs[],
     }
 }
 
-void mex_getCOMMON(char *varname, void *commonBlock, size_t blocksize){
-    
-    mxArray *cID,*registerCommon;
-    void *commonPersist;
-    mxInt64 *commonInfo;
-    // check if commonID exist
-    char exist_cmd[100];
-    sprintf(exist_cmd, "if(~exist('commonID','var'))global commonID;end;");
-    mexEvalString(exist_cmd);
-    cID = mexGetVariable("global","commonID");
-    if(cID==NULL || mxGetNumberOfElements(cID) == 0 || (!mxIsStruct(cID)) ){
-        mexEvalString("commonID=struct();");
-        mxDestroyArray(cID);
-        cID = mexGetVariable("global","commonID");
-        mexPrintf("Initialize COMMON BLOCKS pools.\n");
-    }
-    // check if initialize the common block
-    int cindex = mxGetFieldNumber(cID, varname);
-    if(cindex == -1){
-        // initialize global
-        mexPrintf("Initialize COMMON BLOCKS: %s\n", varname);
-        commonPersist = mxCalloc(blocksize, 1);
-        mexMakeMemoryPersistent(commonPersist);
-        
-        memcpy(commonPersist, commonBlock, blocksize); // if COMMON is allocated RUNTIME, // this
-        
-        // register at remote
-        commonInfo = (mxInt64*)mxCalloc(2,sizeof(mxInt64));
-        commonInfo[0] = (mxInt64)commonPersist;
-        commonInfo[1] = blocksize;
-        registerCommon = mxCreateNumericMatrix(2,1,mxINT64_CLASS,mxREAL);
-        mxSetInt64s(registerCommon, commonInfo);
-        mxAddField(cID, varname);        
-        mxSetField(cID, 0, varname, registerCommon);
-        mexPutVariable("global","commonID",cID);
-    }else{
-        // get common info from remote
-        
-        registerCommon = mxGetField(cID, 0, varname);
-        commonInfo = mxGetInt64s(registerCommon);
-        commonPersist = (void*)commonInfo[0];
-        if(blocksize != commonInfo[1]){
-            mexWarnMsgIdAndTxt("mex:igrft04","mex_getCOMMON: COMMON length mismatch");
-        }
-        memcpy(commonBlock, commonPersist, blocksize);
-    }
-}
-
-void mex_putCOMMON(char *varname, void *commonBlock, size_t blocksize){
-    
-    mxArray *cID,*regCommon;
-    // assume COMMON init is done when calling getCOMMON
-    cID = mexGetVariable("global","commonID");
-    regCommon = mxGetField(cID,0,varname);
-    mxInt64 *commonInfo = mxGetInt64s(regCommon);
-    void *commonPersist = (void*)commonInfo[0];
-    memcpy(commonPersist,commonBlock,blocksize);
-}
-
-void mex_clearCOMMON(){
-    
-    mxArray *cID,*tempInfo;
-    mxInt64 *regCommon;
-    void *commonPersist;
-    cID = mexGetVariable("global","commonID");
-    // check if commonID exist
-    if(cID==NULL || mxGetNumberOfElements(cID) == 0 || (!mxIsStruct(cID)) ){
-        mexWarnMsgIdAndTxt("mex:igrft04","mex_clearCOMMON: No commonID found, may cause memory leak.");
-        return;
-    }
-    int i=0,numFields = mxGetNumberOfFields(cID);
-        
-    for(i=0;i<numFields;i++){        
-        tempInfo = mxGetFieldByNumber(cID, 0, i);
-        regCommon = mxGetInt64s(tempInfo);
-        commonPersist = (void*)regCommon[0];
-        mxFree(commonPersist);
-        mexPrintf("Cleared %s\n",mxGetFieldNameByNumber(cID, i));
-    }
-    mexEvalString("clear global commonID;");
-    mexPrintf("commonID temp var have been cleared.\n");
-}
 
 void mexFunction(int nlhs, mxArray *plhs[], 
                  int nrhs, const mxArray *prhs[]){
@@ -258,10 +170,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
         mexErrMsgIdAndTxt("mex:igrft04","mexMain: few params");
     }
     const int mode = mat2int(prhs[0]); 
-    // READ COMMON
-    mexAtExit(mex_clearCOMMON);
-    mex_getCOMMON("GEOPACK1",&GEOPACK1,34*sizeof(double));
-    mex_getCOMMON("GEOPACK2",&GEOPACK1,315*sizeof(double));
     // execution
     switch(mode){
         case 1:
@@ -276,8 +184,6 @@ void mexFunction(int nlhs, mxArray *plhs[],
         default:
         mexErrMsgIdAndTxt("mex:igrft04","mexMain: wrong mode");
     }
-    mex_putCOMMON("GEOPACK1",&GEOPACK1,34*sizeof(double));
-    mex_putCOMMON("GEOPACK2",&GEOPACK1,315*sizeof(double));
 }
 
 int mat2int(const mxArray *mat){
