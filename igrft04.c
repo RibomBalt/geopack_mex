@@ -18,7 +18,16 @@ extern void T04_S(int*,double*,double*,double*,double*,double*,double*,double*,d
 // SUBROUTINE RECALC_08 (IYEAR,IDAY,IHOUR,MIN,ISEC,VGSEX,VGSEY,VGSEZ)
 extern void RECALC_08(int*,int*,int*,int*,int*,double*,double*,double*);
 // SUBROUTINE IGRF_GSW_08 (XGSW,YGSW,ZGSW,HXGSW,HYGSW,HZGSW)
-extern IGRF_GSW_08(double*,double*,double*,double*,double*,double*);
+extern void IGRF_GSW_08(double*,double*,double*,double*,double*,double*);
+// SUBROUTINE SMGSW_08 (XSM,YSM,ZSM,XGSW,YGSW,ZGSW,J)
+extern void SMGSW_08(double*,double*,double*,double*,double*,double*,int*);
+extern void MAGSM_08(double*,double*,double*,double*,double*,double*,int*);
+extern void GEIGEO_08(double*,double*,double*,double*,double*,double*,int*);
+extern void GEOMAG_08(double*,double*,double*,double*,double*,double*,int*);
+extern void GSWGSE_08(double*,double*,double*,double*,double*,double*,int*);
+extern void GEOGSW_08(double*,double*,double*,double*,double*,double*,int*);
+
+
 
 void mexT04(int nlhs, mxArray *plhs[], 
                  int nrhs, const mxArray *prhs[]){
@@ -162,6 +171,70 @@ void mexIGRFGSW(int nlhs, mxArray *plhs[],
     }
 }
 
+void mex_cvtfun(int nlhs, mxArray *plhs[], 
+                 int nrhs, const mxArray *prhs[], 
+                 void(*cvtfun)(double*,double*,double*,double*,double*,double*,int*)){
+    int i;
+    int direction=1;
+    if(nrhs==4){
+        direction = mat2int(prhs[3]);
+    }else if(nrhs!=3){
+        mexErrMsgIdAndTxt("mex:igrft04","cvtfun: Too few inputs => 3,4");
+    }
+    if(nlhs>3){
+        mexErrMsgIdAndTxt("mex:igrft04","cvtfun: num of outputs => 1-3");
+    }
+    // check XYZ dimensions
+    mwSize dim_in = mxGetNumberOfDimensions(prhs[0]);
+    const mwSize *sz = mxGetDimensions(prhs[0]);
+    const size_t totnum = mxGetNumberOfElements(prhs[0]);
+    if(!matchecksize(2,dim_in,sz,prhs[1],prhs[2])){
+        mexErrMsgIdAndTxt("mex:igrft04","SMGSW: X,Y,Z: dimension mismatch");
+    }
+    // get data
+    double *x1,*x2,*y1,*y2,*z1,*z2;
+    x1 = mxGetDoubles(prhs[0]);
+    y1 = mxGetDoubles(prhs[1]);
+    z1 = mxGetDoubles(prhs[2]);
+    
+    mxArray *oBX,*oBY,*oBZ;
+    oBX = mxDuplicateArray(prhs[0]);
+    oBY = mxDuplicateArray(prhs[0]);
+    oBZ = mxDuplicateArray(prhs[0]);
+    
+    x2 = mxGetDoubles(oBX);
+    y2 = mxGetDoubles(oBY);
+    z2 = mxGetDoubles(oBZ);
+    
+    //CALCULATION
+    if(direction > 0){
+        for(i=0;i<totnum;i++){
+            cvtfun(x1+i, y1+i, z1+i, x2+i, y2+i, z2+i, &direction);
+        }
+    }else{
+        for(i=0;i<totnum;i++){
+            cvtfun(x2+i, y2+i, z2+i, x1+i, y1+i, z1+i, &direction);
+        }
+    }
+    //arrange output
+    switch(nlhs){
+        case 2:
+            plhs[0] = oBX;
+            plhs[1] = oBY;
+            mxDestroyArray(oBZ);
+            break;
+        case 3:
+            plhs[0] = oBX;
+            plhs[1] = oBY;
+            plhs[2] = oBZ;
+            break;
+    default: // 1 & 0
+        plhs[0] = oBX;
+        mxDestroyArray(oBY);
+        mxDestroyArray(oBZ);
+    }
+    
+}
 
 void mexFunction(int nlhs, mxArray *plhs[], 
                  int nrhs, const mxArray *prhs[]){
@@ -180,6 +253,24 @@ void mexFunction(int nlhs, mxArray *plhs[],
             break;
         case 3:
             mexIGRFGSW(nlhs,plhs,nrhs-1,prhs+1);
+            break;
+        case 4:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,SMGSW_08);
+            break;
+        case 5:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,MAGSM_08);
+            break;
+        case 6:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEIGEO_08);
+            break;
+        case 7:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEOMAG_08);
+            break;
+        case 8:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GSWGSE_08);
+            break;
+        case 9:
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEOGSW_08);
             break;
         default:
         mexErrMsgIdAndTxt("mex:igrft04","mexMain: wrong mode");
@@ -210,7 +301,7 @@ int matchecksize(int narray, mwSize ndim, mwSize *sz, ...){
     // fast routine to check whether multiple matrices have same size
     va_list args;
     va_start(args, sz);
-    mxArray *mat;
+    const mxArray *mat;
     int i=0,j=0;
     mwSize ndim_,*sz_;
     for(i=0;i<narray;i++){
