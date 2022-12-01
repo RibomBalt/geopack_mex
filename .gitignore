@@ -1,5 +1,6 @@
 *.obj
 !rebuild.bat
-*.bat
+!/mingw/compile_mex.bat
+
 *.temp
 *.asv

@@ -1,31 +1,32 @@
-#include "mex.h"
-#include "matrix.h"
-#include <stdarg.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+// #include "mex.h"
+// #include "matrix.h"
+// #include <stdarg.h>
+// #include <string.h>
+// #include <stdlib.h>
+// #include <stdio.h>
+#include "igrft04.h"
 
 // COMMON BLOCKS in geopack_08
 extern struct {
     double cb[34];
-}GEOPACK1;
+}geopack1_;
 extern struct {
     double cb[315];
-}GEOPACK2;
+}geopack2_;
 
 // SUBROUTINE T04_S (IOPT,PARMOD,PS,X,Y,Z,BX,BY,BZ)
-extern void T04_S(int*,double*,double*,double*,double*,double*,double*,double*,double*);
+extern void t04_s_(int*,double*,double*,double*,double*,double*,double*,double*,double*);
 // SUBROUTINE RECALC_08 (IYEAR,IDAY,IHOUR,MIN,ISEC,VGSEX,VGSEY,VGSEZ)
-extern void RECALC_08(int*,int*,int*,int*,int*,double*,double*,double*);
+extern void recalc_08_(int*,int*,int*,int*,int*,double*,double*,double*);
 // SUBROUTINE IGRF_GSW_08 (XGSW,YGSW,ZGSW,HXGSW,HYGSW,HZGSW)
-extern void IGRF_GSW_08(double*,double*,double*,double*,double*,double*);
+extern void igrf_gsw_08_(double*,double*,double*,double*,double*,double*);
 // SUBROUTINE SMGSW_08 (XSM,YSM,ZSM,XGSW,YGSW,ZGSW,J)
-extern void SMGSW_08(double*,double*,double*,double*,double*,double*,int*);
-extern void MAGSM_08(double*,double*,double*,double*,double*,double*,int*);
-extern void GEIGEO_08(double*,double*,double*,double*,double*,double*,int*);
-extern void GEOMAG_08(double*,double*,double*,double*,double*,double*,int*);
-extern void GSWGSE_08(double*,double*,double*,double*,double*,double*,int*);
-extern void GEOGSW_08(double*,double*,double*,double*,double*,double*,int*);
+extern void smgsw_08_(double*,double*,double*,double*,double*,double*,int*);
+extern void magsm_08_(double*,double*,double*,double*,double*,double*,int*);
+extern void geigeo_08_(double*,double*,double*,double*,double*,double*,int*);
+extern void geomag_08_(double*,double*,double*,double*,double*,double*,int*);
+extern void gswgse_08_(double*,double*,double*,double*,double*,double*,int*);
+extern void geogsw_08_(double*,double*,double*,double*,double*,double*,int*);
 
 
 
@@ -76,7 +77,7 @@ void mexT04(int nlhs, mxArray *plhs[],
     bz = mxGetDoubles(oBZ);
     // CALCULATION
     for(i=0;i<totnum;i++){
-        T04_S(&iopt, parmod, ps, x+i, y+i, z+i, bx+i, by+i, bz+i);
+        t04_s_(&iopt, parmod, ps, x+i, y+i, z+i, bx+i, by+i, bz+i);
     }
     // return process
     switch(nlhs){
@@ -116,7 +117,7 @@ void mexRecalc(int nlhs, mxArray *plhs[],
     vy = mxGetDoubles(prhs[6]);
     vz = mxGetDoubles(prhs[7]);
     
-    RECALC_08(&yy,&dd,&hh,&mm,&ss,vx,vy,vz);
+    recalc_08_(&yy,&dd,&hh,&mm,&ss,vx,vy,vz);
     plhs[0] = mxCreateDoubleScalar(ansout);
 }
 
@@ -150,7 +151,7 @@ void mexIGRFGSW(int nlhs, mxArray *plhs[],
     bz = mxGetDoubles(oBZ);
     //CALCULATION
     for(i=0;i<totnum;i++){
-        IGRF_GSW_08(x+i, y+i, z+i, bx+i, by+i, bz+i);
+        igrf_gsw_08_(x+i, y+i, z+i, bx+i, by+i, bz+i);
     }
     //arrange output
     switch(nlhs){
@@ -255,22 +256,22 @@ void mexFunction(int nlhs, mxArray *plhs[],
             mexIGRFGSW(nlhs,plhs,nrhs-1,prhs+1);
             break;
         case 4:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,SMGSW_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,smgsw_08_);
             break;
         case 5:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,MAGSM_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,magsm_08_);
             break;
         case 6:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEIGEO_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,geigeo_08_);
             break;
         case 7:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEOMAG_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,geomag_08_);
             break;
         case 8:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GSWGSE_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,gswgse_08_);
             break;
         case 9:
-            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,GEOGSW_08);
+            mex_cvtfun(nlhs,plhs,nrhs-1,prhs+1,geogsw_08_);
             break;
         default:
         mexErrMsgIdAndTxt("mex:igrft04","mexMain: wrong mode");
@@ -297,13 +298,14 @@ int mat2int(const mxArray *mat){
     return mode;
 }
 
-int matchecksize(int narray, mwSize ndim, mwSize *sz, ...){
+int matchecksize(int narray, mwSize ndim, const mwSize *sz, ...){
     // fast routine to check whether multiple matrices have same size
     va_list args;
     va_start(args, sz);
     const mxArray *mat;
     int i=0,j=0;
-    mwSize ndim_,*sz_;
+    mwSize ndim_;
+    const mwSize *sz_;
     for(i=0;i<narray;i++){
         mat = va_arg(args, mxArray*);
         ndim_ = mxGetNumberOfDimensions(mat);

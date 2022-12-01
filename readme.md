@@ -1,5 +1,17 @@
 # 混编实验：MATLAB - C - FORTRAN（MEX方法）
 
+## 2022.12 Update on MinGW GCC + GFortran (MATLAB R2022a)
+
+更新了用MinGW GCC编译MEX的方法。（见`mingw`文件夹下）
+
+虽然MATLAB关于MEX支持的编译器[列表](https://ww2.mathworks.cn/support/requirements/supported-compilers.html)并没有支持MinGW gfortran，但事实上Fortran并没有被MEX直接调用，所以只要用C做中转，还是可以被整个编译为mex的。
+
+注意gfortran编译的符号名为小写+下划线（可以`objdump -t *.o`来查看符号表）。`mex`命令即套壳的`gcc`，而`gcc`链接fortran程序需要链接`gfortran`和`quadmath`两个库，而`mex`默认路径找不到这两个库，所以需要手动指定`-L`参数
+
+`mingw/compile_mex.bat`是修改后的编译脚本。你可能需要自己修改最上面几个路径。
+
+注意MATLAB R2022a只支持MinGW 6.3.0。可以直接在MATLAB的附加功能管理器安装这个版本的MinGW，那么你得到的路径应该会和我的一样。
+
 ## 0. 概述
 
 科研需求，要在MATLAB中调用FORTRAN老代码。那么首先我不咋会FORTRAN，大一倒是学了一点C，参考MATLAB官方文档后，决定用C做接口语言，将FORTRAN老代码编译为MEX文件。

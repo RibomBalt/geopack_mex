@@ -20,6 +20,7 @@ recalc(2013,34,2,50,0,-426.8,-7.9,9.7); % test COMMON with another params
 
 [smx,smy,smz]=smgsw(X,Y,Z,-1);
 [gswx,gswy,gswz]=smgsw(smx,smy,smz,1);
-disp(['total diff gswx-X:',num2str(sum(gswx(:) - X(:)))])
+err_gswx_X = norm(gswx(:) - X(:))/numel(X);
+disp(['total diff gswx-X:',num2str(err_gswx_X)])
 
 clear igrft04;
